@@ -21,8 +21,8 @@ const UserDropdown = () => {
     const router = useRouter();
 
     const user = {
-        name: "Josh",
-        email: "joshbgk0410@gmail.com",
+        name: "Guest",
+        email: "Not Signed In",
     };
 
     const handleSignOut = () => {
