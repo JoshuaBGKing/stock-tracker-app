@@ -1,14 +1,17 @@
-'use client';
+"use client";
 
 import {
     type SubmitHandler,
     useForm,
 } from "react-hook-form";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import CountrySelectField from "@/components/forms/CountrySelectField";
 import InputField from "@/components/forms/InputField";
 import SelectField from "@/components/forms/SelectField";
 import { Button } from "@/components/ui/button";
+import { signUpWithEmail } from "@/lib/actions/auth.actions";
 
 interface SignUpFormData {
     fullName: string;
@@ -78,6 +81,8 @@ const INDUSTRY_OPTIONS = [
 ];
 
 const SignUp = () => {
+    const router = useRouter();
+
     const {
         register,
         control,
@@ -99,11 +104,38 @@ const SignUp = () => {
         mode: "onBlur",
     });
 
-    const onSubmit: SubmitHandler<SignUpFormData> = async (data) => {
+    const onSubmit: SubmitHandler<SignUpFormData> = async (
+        data
+    ) => {
         try {
-            console.log(data);
+            const result = await signUpWithEmail(data);
+
+            if (!result.success) {
+                toast.error("Sign up failed", {
+                    description:
+                        result.error ??
+                        "Failed to create your account.",
+                });
+
+                return;
+            }
+
+            toast.success("Account created", {
+                description:
+                    "Your Signalist account was created successfully.",
+            });
+
+            router.push("/");
+            router.refresh();
         } catch (error) {
-            console.error(error);
+            console.error("Sign up failed:", error);
+
+            toast.error("Sign up failed", {
+                description:
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to create an account.",
+            });
         }
     };
 
@@ -129,7 +161,8 @@ const SignUp = () => {
                         required: "Full name is required",
                         minLength: {
                             value: 2,
-                            message: "Full name must contain at least 2 characters",
+                            message:
+                                "Full name must contain at least 2 characters",
                         },
                     }}
                 />
@@ -146,7 +179,8 @@ const SignUp = () => {
                         required: "Email is required",
                         pattern: {
                             value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                            message: "Enter a valid email address",
+                            message:
+                                "Enter a valid email address",
                         },
                     }}
                 />
@@ -171,7 +205,8 @@ const SignUp = () => {
                         required: "Password is required",
                         minLength: {
                             value: 8,
-                            message: "Password must contain at least 8 characters",
+                            message:
+                                "Password must contain at least 8 characters",
                         },
                     }}
                 />
