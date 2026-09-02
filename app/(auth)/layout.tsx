@@ -73,6 +73,5 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
         </main>
     );
 };
-
+/* Code goes here*/
 export default AuthLayout;
-//
