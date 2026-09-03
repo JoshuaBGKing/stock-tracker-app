@@ -1,6 +1,9 @@
 import nodemailer from "nodemailer";
 
-import { WELCOME_EMAIL_TEMPLATE } from "@/lib/nodemailer/templates";
+import {
+    NEWS_SUMMARY_EMAIL_TEMPLATE,
+    WELCOME_EMAIL_TEMPLATE,
+} from "@/lib/nodemailer/templates";
 
 interface WelcomeEmailData {
     email: string;
@@ -8,47 +11,93 @@ interface WelcomeEmailData {
     intro: string;
 }
 
-const emailUser = process.env.NODEMAILER_EMAIL;
-const emailPassword = process.env.NODEMAILER_PASSWORD;
-
-if (!emailUser) {
-    throw new Error(
-        "NODEMAILER_EMAIL must be defined in the .env file"
-    );
+interface NewsSummaryEmailData {
+    email: string;
+    date: string;
+    newsContent: string;
 }
 
-if (!emailPassword) {
-    throw new Error(
-        "NODEMAILER_PASSWORD must be defined in the .env file"
-    );
+export const transporter =
+    nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+            user:
+            process.env.NODEMAILER_EMAIL,
+            pass:
+            process.env
+                .NODEMAILER_PASSWORD,
+        },
+    });
+
+function checkEmailConfiguration(): void {
+    if (
+        !process.env.NODEMAILER_EMAIL ||
+        !process.env.NODEMAILER_PASSWORD
+    ) {
+        throw new Error(
+            "NODEMAILER_EMAIL or NODEMAILER_PASSWORD is missing"
+        );
+    }
 }
 
-export const transporter = nodemailer.createTransport({
-    service: "gmail",
+function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 
-    auth: {
-        user: emailUser,
-        pass: emailPassword,
-    },
-});
+export const sendWelcomeEmail =
+    async ({
+               email,
+               name,
+               intro,
+           }: WelcomeEmailData): Promise<void> => {
+        checkEmailConfiguration();
 
-export const sendWelcomeEmail = async ({
-                                           email,
-                                           name,
-                                           intro,
-                                       }: WelcomeEmailData): Promise<void> => {
-    const htmlTemplate = WELCOME_EMAIL_TEMPLATE
-        .replace("{{name}}", name)
-        .replace("{{intro}}", intro);
+        const htmlTemplate =
+            WELCOME_EMAIL_TEMPLATE.replace(
+                "{{name}}",
+                escapeHtml(name)
+            ).replace(
+                "{{intro}}",
+                intro
+            );
 
-    const mailOptions = {
-        from: `"Signalist" <${emailUser}>`,
-        to: email,
-        subject:
-            "Welcome to Signalist – your stock market toolkit is ready!",
-        text: `Welcome to Signalist, ${name}. Thanks for joining us.`,
-        html: htmlTemplate,
+        await transporter.sendMail({
+            from: `"Signalist" <${process.env.NODEMAILER_EMAIL}>`,
+            to: email,
+            subject:
+                "Welcome to Signalist — your stock market toolkit is ready!",
+            text: `Welcome to Signalist, ${name}. Your account is ready.`,
+            html: htmlTemplate,
+        });
     };
 
-    await transporter.sendMail(mailOptions);
-};
+export const sendNewsSummaryEmail =
+    async ({
+               email,
+               date,
+               newsContent,
+           }: NewsSummaryEmailData): Promise<void> => {
+        checkEmailConfiguration();
+
+        const htmlTemplate =
+            NEWS_SUMMARY_EMAIL_TEMPLATE.replace(
+                "{{date}}",
+                escapeHtml(date)
+            ).replace(
+                "{{newsContent}}",
+                newsContent
+            );
+
+        await transporter.sendMail({
+            from: `"Signalist News" <${process.env.NODEMAILER_EMAIL}>`,
+            to: email,
+            subject: `Market News Summary — ${date}`,
+            text: `Your Signalist market news summary for ${date}`,
+            html: htmlTemplate,
+        });
+    };
