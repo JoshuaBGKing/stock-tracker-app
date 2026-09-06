@@ -1,43 +1,56 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 const useTradingViewWidget = (
     scriptUrl: string,
     config: Record<string, unknown>,
     height = 600
 ) => {
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const configJson = JSON.stringify(config);
+    const containerRef =
+        useRef<HTMLDivElement | null>(null);
+
+    /*
+     * Converting the configuration to a string
+     * prevents the effect from running repeatedly
+     * when an equivalent object is received.
+     */
+    const serializedConfig = useMemo(
+        () => JSON.stringify(config),
+        [config]
+    );
 
     useEffect(() => {
         const container = containerRef.current;
 
-        if (!container || container.dataset.loaded) return;
+        if (!container) return;
 
-        container.dataset.loaded = "true";
+        container.replaceChildren();
 
-        container.innerHTML = `
-      <div
-        class="tradingview-widget-container__widget"
-        style="width: 100%; height: ${height}px;"
-      ></div>
-    `;
+        const widgetContainer =
+            document.createElement("div");
 
-        const script = document.createElement("script");
+        widgetContainer.className =
+            "tradingview-widget-container__widget";
+
+        widgetContainer.style.width = "100%";
+        widgetContainer.style.height = `${height}px`;
+
+        const script =
+            document.createElement("script");
 
         script.src = scriptUrl;
         script.type = "text/javascript";
         script.async = true;
-        script.textContent = configJson;
+        script.text = serializedConfig;
 
+        container.appendChild(widgetContainer);
         container.appendChild(script);
 
         return () => {
-            container.innerHTML = "";
-            delete container.dataset.loaded;
+            container.replaceChildren();
         };
-    }, [scriptUrl, configJson, height]);
+    }, [scriptUrl, serializedConfig, height]);
 
     return containerRef;
 };
