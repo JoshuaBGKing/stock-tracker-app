@@ -1,14 +1,16 @@
-import mongoose, {
-    type Document,
-    type Model,
+import {
     Schema,
+    model,
+    models,
+    type Model,
 } from "mongoose";
 
-export interface WatchlistItem extends Document {
+export interface WatchlistItem {
     userId: string;
     symbol: string;
     company: string;
-    addedAt: Date;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 const WatchlistSchema =
@@ -31,16 +33,15 @@ const WatchlistSchema =
                 required: true,
                 trim: true,
             },
-            addedAt: {
-                type: Date,
-                default: Date.now,
-            },
         },
         {
-            timestamps: false,
+            timestamps: true,
         }
     );
 
+/*
+ * A user cannot add the same stock twice.
+ */
 WatchlistSchema.index(
     {
         userId: 1,
@@ -51,14 +52,11 @@ WatchlistSchema.index(
     }
 );
 
-const Watchlist: Model<WatchlistItem> =
-    (mongoose.models
-        .Watchlist as Model<WatchlistItem>) ||
-    mongoose.model<WatchlistItem>(
+export const Watchlist: Model<WatchlistItem> =
+    (models.Watchlist as
+        | Model<WatchlistItem>
+        | undefined) ??
+    model<WatchlistItem>(
         "Watchlist",
         WatchlistSchema
     );
-
-export { Watchlist };
-
-export default Watchlist;

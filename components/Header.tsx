@@ -1,21 +1,43 @@
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
+
 import NavItems from "@/components/NavItems";
 import UserDropdown from "@/components/UserDropdown";
+import { searchStocks } from "@/lib/actions/finnhub.actions";
 
-const Header = ({user}:{user:User}) => {
+interface HeaderProps {
+    user: {
+        id: string;
+        name: string;
+        email: string;
+    };
+}
+
+const Header = async ({ user }: HeaderProps) => {
+    const initialStocks = await searchStocks();
+
     return (
-        <header className="sticky top-0 header">
-            <div className="container header-wrapper">
+        <header className="sticky top-0 z-50 border-b border-gray-800 bg-black">
+            <div className="container mx-auto flex h-16 items-center justify-between px-4">
                 <Link href="/">
-                    <Image src="/assets/icons/logo.svg" alt="Signalist logo" width={140} height={32} className="h-8 w-auto cursor-pointer" />
+                    <Image
+                        src="/assets/icons/logo.svg"
+                        alt="Signalist logo"
+                        width={140}
+                        height={32}
+                        className="h-8 w-auto"
+                        priority
+                    />
                 </Link>
+
                 <nav className="hidden sm:block">
-                    <NavItems/>
+                    <NavItems initialStocks={initialStocks} />
                 </nav>
-                <UserDropdown user = {user} />
+
+                <UserDropdown user={user} />
             </div>
         </header>
-    )
-}
-export default Header
+    );
+};
+
+export default Header;
