@@ -1,52 +1,50 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
-import {Toaster} from "@/components/ui/sonner"
-import { Geist, Geist_Mono, Inter } from "next/font/google";
-import { cn } from "@/lib/utils";
+import { Toaster } from "@/components/ui/sonner";
+import { PreferencesProvider } from "@/components/PreferencesProvider";
+import { AppearanceProvider } from "@/components/AppearanceProvider";
+import { brand } from "@/lib/brand";
+import { isIsolatedTestEnvironment } from "@/lib/test-mode";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "Signalist",
-  description: "Track real-time stock prices, get personalized alerts and explore detailed company insights.",
+  title: {
+    default: "Stillmark — A clearer view of the market",
+    template: "%s · Stillmark",
+  },
+  description: brand.description,
+  icons: { icon: "/icon.svg", apple: "/stillmark.svg" },
+  robots: { index: false, follow: false },
 };
-
 export default function RootLayout({
-                                     children,
-                                   }: Readonly<{
-  children: ReactNode;
-}>) {
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-      <html
-          lang="en"
-          className={cn(
-              "dark",
-              "h-full",
-              "antialiased",
-              "font-sans",
-              geistSans.variable,
-              geistMono.variable,
-              inter.variable
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+      <body>
+        <AppearanceProvider>
+          {isIsolatedTestEnvironment() && (
+            <div className="test-mode-banner" role="status">
+              Isolated test workspace · Use an @example.test email. Accounts
+              reset when this server stops.{" "}
+              <a
+                href="http://127.0.0.1:8025"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open test inbox (new tab)
+              </a>
+            </div>
           )}
-      >
-      <body className="min-h-full flex flex-col">
-      {children}
-      <Toaster/>
+          <PreferencesProvider>
+            <a href="#main-content" className="skip-link">
+              Skip to content
+            </a>
+            {children}
+            <Toaster position="bottom-right" richColors />
+          </PreferencesProvider>
+        </AppearanceProvider>
       </body>
-      </html>
+    </html>
   );
 }
