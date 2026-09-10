@@ -1,131 +1,128 @@
-
+import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-
+import { ArrowLeft, ArrowUpRight, Bell, Info } from "lucide-react";
+import { getQuote } from "@/lib/market";
+import { isProviderQuote, quoteDisclosure } from "@/lib/market-integrity";
+import { getNews } from "@/lib/actions/finnhub.actions";
+import { MarketChart } from "@/components/MarketChart";
+import { SaveStockButton } from "@/components/SaveStockButton";
 import TradingViewWidget from "@/components/TradingViewWidget";
-import WatchlistButton from "@/components/WatchlistButton";
-import { isStockInWatchlist } from "@/lib/actions/watchlist.actions";
-import {
-    BASELINE_WIDGET_CONFIG,
-    CANDLE_CHART_WIDGET_CONFIG,
-    COMPANY_FINANCIALS_WIDGET_CONFIG,
-    COMPANY_PROFILE_WIDGET_CONFIG,
-    SYMBOL_INFO_WIDGET_CONFIG,
-    TECHNICAL_ANALYSIS_WIDGET_CONFIG,
-} from "@/lib/constants";
-
-interface StockDetailsPageProps {
-    params: Promise<{
-        symbol: string;
-    }>;
+import { NewsPreview } from "@/components/Dashboard";
+import { ResearchInsight } from "@/components/ResearchInsight";
+import { insightsAvailable } from "@/lib/insights";
+import { isIsolatedTestEnvironment } from "@/lib/test-mode";
+type Props = { params: Promise<{ symbol: string }> };
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { symbol } = await params;
+  return { title: `${symbol.toUpperCase()} overview` };
 }
-
-const TRADING_VIEW_SCRIPT_URL =
-    "https://s3.tradingview.com/external-embedding/embed-widget-";
-
-const StockDetails = async ({
-                                params,
-                            }: StockDetailsPageProps) => {
-    const { symbol: symbolParameter } =
-        await params;
-
-    const symbol = symbolParameter
-        .trim()
-        .toUpperCase();
-
-    if (!/^[A-Z0-9.:-]{1,25}$/.test(symbol)) {
-        notFound();
-    }
-
-    /*
-     * This reads the actual value from MongoDB.
-     */
-    const isInWatchlist =
-        await isStockInWatchlist(symbol);
-
+export default async function StockPage({ params }: Props) {
+  const symbol = (await params).symbol.trim().toUpperCase();
+  if (!/^[A-Z0-9.:-]{1,25}$/.test(symbol)) notFound();
+  const [quote, articles] = await Promise.all([
+    getQuote(symbol),
+    getNews([symbol]),
+  ]);
+  if (!quote)
     return (
-        <main className="min-h-screen bg-black px-4 py-6 text-white md:px-6 lg:px-8">
-            <div className="mx-auto w-full max-w-[1600px]">
-                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <p className="mb-1 text-sm text-gray-500">
-                            Stock details
-                        </p>
-
-                        <h1 className="text-3xl font-semibold text-gray-100">
-                            {symbol}
-                        </h1>
-                    </div>
-
-                    <WatchlistButton
-                        symbol={symbol}
-                        company={symbol}
-                        isInWatchlist={
-                            isInWatchlist
-                        }
-                    />
-                </div>
-
-                <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(360px,1fr)]">
-                    <div className="flex min-w-0 flex-col gap-6">
-                        <TradingViewWidget
-                            scriptUrl={`${TRADING_VIEW_SCRIPT_URL}symbol-info.js`}
-                            config={SYMBOL_INFO_WIDGET_CONFIG(
-                                symbol
-                            )}
-                            height={170}
-                        />
-
-                        <TradingViewWidget
-                            title="Price Chart"
-                            scriptUrl={`${TRADING_VIEW_SCRIPT_URL}advanced-chart.js`}
-                            config={CANDLE_CHART_WIDGET_CONFIG(
-                                symbol
-                            )}
-                            height={600}
-                        />
-
-                        <TradingViewWidget
-                            title="Performance"
-                            scriptUrl={`${TRADING_VIEW_SCRIPT_URL}advanced-chart.js`}
-                            config={BASELINE_WIDGET_CONFIG(
-                                symbol
-                            )}
-                            height={600}
-                        />
-                    </div>
-
-                    <div className="flex min-w-0 flex-col gap-6">
-                        <TradingViewWidget
-                            title="Technical Analysis"
-                            scriptUrl={`${TRADING_VIEW_SCRIPT_URL}technical-analysis.js`}
-                            config={TECHNICAL_ANALYSIS_WIDGET_CONFIG(
-                                symbol
-                            )}
-                            height={400}
-                        />
-
-                        <TradingViewWidget
-                            title="Company Profile"
-                            scriptUrl={`${TRADING_VIEW_SCRIPT_URL}company-profile.js`}
-                            config={COMPANY_PROFILE_WIDGET_CONFIG(
-                                symbol
-                            )}
-                            height={440}
-                        />
-
-                        <TradingViewWidget
-                            title="Company Financials"
-                            scriptUrl={`${TRADING_VIEW_SCRIPT_URL}financials.js`}
-                            config={COMPANY_FINANCIALS_WIDGET_CONFIG(
-                                symbol
-                            )}
-                            height={464}
-                        />
-                    </div>
-                </section>
-            </div>
-        </main>
+      <section className="panel empty-state">
+        <h1>{symbol}</h1>
+        <p className="mt-5">
+          A verified USD quote is not available for this symbol right now.
+          Stillmark supports USD-denominated listings only. The listing may use
+          another currency or be temporarily unavailable from the provider.
+        </p>
+        <Link href="/" className="button">
+          Back to market overview
+        </Link>
+      </section>
     );
-};
-
-export default StockDetails;
+  const sample = quote.source === "sample";
+  const testMode = isIsolatedTestEnvironment();
+  return (
+    <>
+      <Link href="/" className="text-link mb-6">
+        <ArrowLeft size={13} aria-hidden="true" />
+        Market overview
+      </Link>
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">
+            {quote.exchange} · {quote.sector}
+          </span>
+          <h1>
+            {quote.name}{" "}
+            <span className="text-muted-foreground font-normal text-lg ml-3">
+              {symbol}
+            </span>
+          </h1>
+          <p>A closer look at the company on your radar.</p>
+        </div>
+        <div className="page-actions">
+          <SaveStockButton symbol={symbol} company={quote.name} />
+          <Link className="button primary" href={"/alerts?symbol=" + symbol}>
+            <Bell size={14} aria-hidden="true" />
+            Create price alert
+          </Link>
+        </div>
+      </div>
+      <div className="stock-detail-grid">
+        <div className="detail-stack">
+          <MarketChart quote={quote} sample={sample} />
+          <ResearchInsight
+            symbol={symbol}
+            enabled={insightsAvailable()}
+            dataAvailable={testMode || isProviderQuote(quote)}
+            testMode={testMode}
+          />
+          <section className="panel settings-section">
+            <TradingViewWidget
+              title="Interactive chart"
+              scriptUrl="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js"
+              height={500}
+              config={{
+                autosize: true,
+                symbol,
+                interval: "D",
+                timezone: "America/New_York",
+                style: "2",
+                locale: "en",
+                allow_symbol_change: false,
+                calendar: false,
+                support_host: "https://www.tradingview.com",
+              }}
+            />
+          </section>
+        </div>
+        <div className="detail-stack">
+          <section className="panel insight-panel">
+            <span className="insight-top">Before the next move</span>
+            <h2 className="insight-title">
+              A price is only part of the story.
+            </h2>
+            <p>
+              Read company filings, understand the business, and consider your
+              own circumstances. A watchlist is a research tool, not a
+              recommendation.
+            </p>
+            <a
+              className="text-link"
+              href="https://www.sec.gov/edgar/search/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Explore SEC filings (new tab)
+              <ArrowUpRight size={13} aria-hidden="true" />
+            </a>
+          </section>
+          <NewsPreview articles={articles} />
+        </div>
+      </div>
+      <p className="data-disclosure">
+        <Info size={13} aria-hidden="true" />
+        {quoteDisclosure(quote)} No orders can be placed through Stillmark.
+      </p>
+    </>
+  );
+}

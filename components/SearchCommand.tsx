@@ -1,238 +1,180 @@
 "use client";
-
 import { useEffect, useState } from "react";
-import { Loader2, Search, TrendingUp } from "lucide-react";
+import { ArrowUpRight, Loader2, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-
-import { Button } from "@/components/ui/button";
 import {
-    Command,
-    CommandDialog,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
+  Command,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
 } from "@/components/ui/command";
-import {
-    searchStocks,
-    type StockWithWatchlistStatus,
-} from "@/lib/actions/finnhub.actions";
-
-interface SearchCommandProps {
-    renderAs?: "button" | "text";
-    label?: string;
-    initialStocks?: StockWithWatchlistStatus[];
-}
-
-const SearchCommand = ({
-                           renderAs = "button",
-                           label = "Add stock",
-                           initialStocks = [],
-                       }: SearchCommandProps) => {
-    const router = useRouter();
-
-    const [open, setOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [stocks, setStocks] =
-        useState<StockWithWatchlistStatus[]>(initialStocks);
-    const [loading, setLoading] = useState(false);
-
-    const isSearchMode = searchTerm.trim().length > 0;
-
-    useEffect(() => {
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (
-                (event.ctrlKey || event.metaKey) &&
-                event.key.toLowerCase() === "k"
-            ) {
-                event.preventDefault();
-                setOpen((currentValue) => !currentValue);
-            }
-        };
-
-        window.addEventListener("keydown", handleKeyDown);
-
-        return () => {
-            window.removeEventListener(
-                "keydown",
-                handleKeyDown
-            );
-        };
-    }, []);
-
-    useEffect(() => {
-        if (!open) return;
-
-        const cleanedSearchTerm = searchTerm.trim();
-
-        if (!cleanedSearchTerm) {
-            setStocks(initialStocks);
-            setLoading(false);
-            return;
-        }
-
-        let cancelled = false;
-
-        const timeout = window.setTimeout(async () => {
-            setLoading(true);
-
-            try {
-                const results =
-                    await searchStocks(cleanedSearchTerm);
-
-                if (!cancelled) {
-                    setStocks(results);
-                }
-            } catch (error) {
-                console.error(
-                    "Stock search failed:",
-                    error
-                );
-
-                if (!cancelled) {
-                    setStocks([]);
-                }
-            } finally {
-                if (!cancelled) {
-                    setLoading(false);
-                }
-            }
-        }, 300);
-
-        return () => {
-            cancelled = true;
-            window.clearTimeout(timeout);
-        };
-    }, [searchTerm, open, initialStocks]);
-
-    const handleOpenChange = (isOpen: boolean) => {
-        setOpen(isOpen);
-
-        if (!isOpen) {
-            setSearchTerm("");
-            setStocks(initialStocks);
-            setLoading(false);
-        }
-    };
-
-    const handleSelectStock = (symbol: string) => {
-        handleOpenChange(false);
-
-        router.push(
-            `/stocks/${encodeURIComponent(symbol)}`
-        );
-    };
-
-    const displayStocks = isSearchMode
-        ? stocks
-        : stocks.slice(0, 10);
-
-    return (
-        <>
-            {renderAs === "text" ? (
-                <button
-                    type="button"
-                    onClick={() => setOpen(true)}
-                    className="transition-colors hover:text-yellow-500"
-                >
-                    {label}
-                </button>
-            ) : (
-                <Button
-                    type="button"
-                    onClick={() => setOpen(true)}
-                    className="gap-2 bg-yellow-400 text-black hover:bg-yellow-500"
-                >
-                    <Search className="h-4 w-4" />
-                    {label}
-                </Button>
-            )}
-
-            <CommandDialog
-                open={open}
-                onOpenChange={handleOpenChange}
-            >
-                {/*
-                  CommandInput must be inside Command.
-                  shouldFilter={false} lets Finnhub handle searching.
-                */}
-                <Command
-                    shouldFilter={false}
-                    className="bg-gray-950 text-gray-100"
-                >
-                    <div className="relative">
-                        <CommandInput
-                            value={searchTerm}
-                            onValueChange={setSearchTerm}
-                            placeholder="Search stocks..."
-                        />
-
-                        {loading && (
-                            <Loader2 className="absolute right-4 top-3 h-5 w-5 animate-spin text-yellow-500" />
-                        )}
-                    </div>
-
-                    <CommandList className="max-h-[400px]">
-                        {loading ? (
-                            <div className="py-8 text-center text-sm text-gray-400">
-                                Searching stocks...
-                            </div>
-                        ) : (
-                            <>
-                                <CommandEmpty>
-                                    {isSearchMode
-                                        ? "No stocks found."
-                                        : "No stocks available."}
-                                </CommandEmpty>
-
-                                {displayStocks.length > 0 && (
-                                    <CommandGroup
-                                        heading={
-                                            isSearchMode
-                                                ? `Search results (${displayStocks.length})`
-                                                : `Popular stocks (${displayStocks.length})`
-                                        }
-                                    >
-                                        {displayStocks.map(
-                                            (stock) => (
-                                                <CommandItem
-                                                    key={`${stock.symbol}-${stock.exchange}`}
-                                                    value={`${stock.symbol} ${stock.name}`}
-                                                    onSelect={() =>
-                                                        handleSelectStock(
-                                                            stock.symbol
-                                                        )
-                                                    }
-                                                    className="cursor-pointer py-3 data-[selected=true]:bg-gray-800"
-                                                >
-                                                    <TrendingUp className="mr-3 h-4 w-4 text-yellow-500" />
-
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="truncate font-medium text-gray-100">
-                                                            {stock.name}
-                                                        </p>
-
-                                                        <p className="truncate text-sm text-gray-500">
-                                                            {stock.symbol}
-                                                            {" | "}
-                                                            {stock.exchange}
-                                                            {" | "}
-                                                            {stock.type}
-                                                        </p>
-                                                    </div>
-                                                </CommandItem>
-                                            )
-                                        )}
-                                    </CommandGroup>
-                                )}
-                            </>
-                        )}
-                    </CommandList>
-                </Command>
-            </CommandDialog>
-        </>
-    );
+import { instruments } from "@/lib/market-catalog";
+import { searchMarket } from "@/lib/actions/search.actions";
+import type { StockWithWatchlistStatus } from "@/lib/actions/finnhub.actions";
+type Props = {
+  renderAs?: "button" | "text";
+  label?: string;
+  initialStocks?: StockWithWatchlistStatus[];
+  shortcut?: boolean;
 };
-
-export default SearchCommand;
+const catalog = instruments.map((stock) => ({
+  ...stock,
+  type: "Stock",
+  isInWatchlist: false,
+}));
+export default function SearchCommand({
+  label = "Search stocks",
+  initialStocks = catalog,
+  shortcut = false,
+  renderAs = "button",
+}: Props) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false),
+    [query, setQuery] = useState("");
+  const [result, setResult] = useState<{
+    query: string;
+    stocks: StockWithWatchlistStatus[];
+    error: string;
+  }>({ query: "", stocks: [], error: "" });
+  const cleaned = query.trim();
+  const loading = !!cleaned && result.query !== cleaned;
+  useEffect(() => {
+    if (!shortcut) return;
+    function key(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setOpen((value) => !value);
+      }
+    }
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [shortcut]);
+  useEffect(() => {
+    if (!open || !cleaned) return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await searchMarket(cleaned);
+        if (!cancelled) setResult({ query: cleaned, ...response });
+      } catch {
+        if (!cancelled)
+          setResult({
+            query: cleaned,
+            stocks: [],
+            error: "Search is unavailable. Please try again.",
+          });
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [cleaned, open]);
+  function onOpenChange(value: boolean) {
+    setOpen(value);
+    if (!value) {
+      setQuery("");
+      setResult({ query: "", stocks: [], error: "" });
+    }
+  }
+  return (
+    <>
+      <button
+        type="button"
+        className={
+          shortcut
+            ? "search-trigger"
+            : renderAs === "text"
+              ? "text-link"
+              : "button"
+        }
+        onClick={() => onOpenChange(true)}
+        aria-label={shortcut ? "Search stocks" : label}
+      >
+        <Search size={15} aria-hidden="true" />
+        <span>{label}</span>
+        {shortcut && <kbd>⌘ K</kbd>}
+      </button>
+      <CommandDialog
+        title="Find a stock"
+        description="Search USD-listed stocks by company or ticker. Use arrow keys to navigate and Enter to open stock details."
+        open={open}
+        onOpenChange={onOpenChange}
+        showCloseButton
+      >
+        <Command shouldFilter={false}>
+          <div className="px-3 pt-4 pb-2 pr-12">
+            <CommandInput
+              aria-label="Company name or stock symbol"
+              value={query}
+              onValueChange={setQuery}
+              placeholder="Company name or symbol"
+              maxLength={60}
+            />
+          </div>
+          <CommandList className="max-h-[380px] p-2" aria-busy={loading}>
+            {loading ? (
+              <div
+                className="flex items-center gap-2 p-6 text-sm text-muted-foreground"
+                role="status"
+              >
+                <Loader2
+                  className="animate-spin"
+                  size={16}
+                  aria-hidden="true"
+                />
+                Searching stocks…
+              </div>
+            ) : result.error && cleaned ? (
+              <p role="alert" className="p-5 text-sm text-destructive">
+                {result.error}
+              </p>
+            ) : (
+              <>
+                <CommandEmpty>
+                  No matching stocks. Try another name or symbol.
+                </CommandEmpty>
+                <CommandGroup
+                  heading={cleaned ? "Search results" : "Start exploring"}
+                >
+                  {(cleaned ? result.stocks : initialStocks).map((stock) => (
+                    <CommandItem
+                      key={stock.symbol}
+                      value={stock.symbol}
+                      className="cursor-pointer p-3"
+                      onSelect={() => {
+                        onOpenChange(false);
+                        router.push(
+                          "/stocks/" + encodeURIComponent(stock.symbol),
+                        );
+                      }}
+                    >
+                      <span className="stock-icon">
+                        {stock.symbol.slice(0, 1)}
+                      </span>
+                      <span className="flex-1">
+                        <span className="block text-sm font-medium">
+                          {stock.symbol}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {stock.name}
+                        </span>
+                      </span>
+                      <ArrowUpRight size={15} aria-hidden="true" />
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+          <div className="border-t px-5 py-3 text-[10px] text-muted-foreground">
+            ↑ ↓ navigate · Enter to open · Esc to close
+          </div>
+        </Command>
+      </CommandDialog>
+    </>
+  );
+}

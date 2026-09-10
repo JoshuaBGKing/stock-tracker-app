@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.next-test/
 /out/
 
 # production
@@ -34,6 +35,15 @@ yarn-error.log*
 .env*
 .env.local
 .env*.local
+!.env.example
+
+# Browser verification artifacts
+/test-results/
+/playwright-report/
+/.artifacts/
+
+# Local recovery archive of tutorial artwork; not cleared for redistribution.
+/docs/legacy-assets/
 
 # vercel
 .vercel
